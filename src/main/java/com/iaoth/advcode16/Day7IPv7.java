@@ -9,7 +9,7 @@ import java.util.stream.Stream;
 import static com.iaoth.advcode16.AdvCodeUtil.readResource;
 
 /**
- * Created by Joakim.Almgren on 2016-12-07.
+ * Solution to day 7 of Advent of Code 2016
  */
 public class Day7IPv7 {
 
@@ -28,11 +28,9 @@ public class Day7IPv7 {
 
         return supernets.stream()
                 .flatMap(Day7IPv7::getBABs)
-                .filter(bab -> hypernets.stream()
-                        .filter(net -> net.contains(bab))
-                        .findAny().isPresent()
-                )
-                .findAny().isPresent();
+                .anyMatch(bab -> hypernets.stream()
+                        .anyMatch(net -> net.contains(bab))
+                );
     }
 
     private static boolean supportsTLS(String ip) {
@@ -40,12 +38,12 @@ public class Day7IPv7 {
         List<String> supernets = new ArrayList<>();
         getHyperSuper(ip, hypernets, supernets);
 
-        return supernets.stream().filter(Day7IPv7::hasABBA).findAny().isPresent() &&
-                !hypernets.stream().filter(Day7IPv7::hasABBA).findAny().isPresent();
+        return supernets.stream().anyMatch(Day7IPv7::hasABBA) &&
+                hypernets.stream().noneMatch(Day7IPv7::hasABBA);
     }
 
     private static void getHyperSuper(String ip, List<String> hypernets, List<String> supernets) {
-        Matcher matcher = Pattern.compile("\\[[a-z]+\\]").matcher(ip);
+        Matcher matcher = Pattern.compile("\\[[a-z]+]").matcher(ip);
         int i = 0;
         while (matcher.find()) {
             int j = matcher.start();
