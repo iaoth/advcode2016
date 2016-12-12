@@ -21,7 +21,7 @@ public class Day11RTG {
                 .collect(Collectors.toList());
         Set<String> names = new HashSet<>();
 
-        AdvCodeUtil.readResource("day11input.txt").lines().forEach(line -> {
+        AdvCodeUtil.readResource("day11test.txt").lines().forEach(line -> {
             int floor = -1;
             if (line.contains("first floor")) {
                 floor = 0;
@@ -168,18 +168,7 @@ public class Day11RTG {
         }
 
         boolean isWinner() {
-            if (floor != 3)
-                return false;
-
-            if (items[0] != 0 || items[1] != 0 || items[2] != 0) {
-                return false;
-            }
-
-            if (items[3] == 0) {
-                return false;
-            }
-
-            return true;
+            return floor == 3 && items[0] == 0 && items[1] == 0 && items[2] == 0 && items[3] != 0;
         }
 
         boolean wouldFry() {
