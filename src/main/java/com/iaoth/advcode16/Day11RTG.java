@@ -21,7 +21,7 @@ public class Day11RTG {
                 .collect(Collectors.toList());
         Set<String> names = new HashSet<>();
 
-        AdvCodeUtil.readResource("day11test.txt").lines().forEach(line -> {
+        AdvCodeUtil.readResource("day11input.txt").lines().forEach(line -> {
             int floor = -1;
             if (line.contains("first floor")) {
                 floor = 0;
@@ -186,6 +186,28 @@ public class Day11RTG {
             return (chips & ~shielded) != 0;
         }
 
+        // with apologies to Andrew Foote https://andars.github.io/aoc_day11.html
+        private List<Integer> normalize() {
+            List<Integer> pairs = new ArrayList<>();
+            for (int i = 0; i < nTypes; i++) {
+                int chip = -1, gen = -1;
+                for (int j = 0; j < 4; j++) {
+                    if ((items[j] & (1 << i)) != 0) {
+                        chip = j;
+                    }
+                    if ((items[j] & (1 << (i + nTypes))) != 0) {
+                        gen = j;
+                    }
+                }
+                if (chip == -1 || gen == -1) {
+                    throw new RuntimeException("Chip or generator not found");
+                }
+                pairs.add(gen * nTypes + chip);
+            }
+            Collections.sort(pairs);
+            return pairs;
+        }
+
         @Override
         public boolean equals(Object obj) {
             if (obj == this)
@@ -193,7 +215,7 @@ public class Day11RTG {
             if (!(obj instanceof State))
                 return false;
             final State other = (State) obj;
-            return this.floor == other.floor && Arrays.equals(this.items, other.items);
+            return this.floor == other.floor && this.normalize().equals(other.normalize());
         }
     }
 }
