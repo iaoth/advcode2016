@@ -48,43 +48,55 @@ public class Day11RTG {
         });
 
         nTypes = names.size();
+        if (nTypes > 16) {
+            throw new RuntimeException("Implementation only handles a max of 16 types of RTGs");
+        }
+
         State start = new State(names, floorChips, floorGens);
-        List<State> solution = solve(start);
+        State solution = solve(start);
         if (solution == null) {
             System.out.println("No solution found");
         } else {
-            System.out.println(solution.size() - 1);
+            System.out.println(solution.depth);
         }
     }
 
-    private static List<State> solve(State start) {
-        int length = 0;
-        Deque<List<State>> paths = new ArrayDeque<>(Collections.singletonList(Collections.singletonList(start)));
-        while (!paths.isEmpty()) {
-            List<State> path = paths.removeFirst();
-            List<List<State>> newPaths = generateStates(path);
-            for (List<State> newPath : newPaths) {
-                if (newPath.get(newPath.size() - 1).isWinner()) {
-                    return newPath;
+    private static State solve(State start) {
+        allStates.add(start);
+        int depth = 0;
+        int gc = 0;
+        Deque<State> states = new ArrayDeque<>(Collections.singletonList(start));
+        while (!states.isEmpty()) {
+            State state = states.removeFirst();
+            List<State> newStates = generateStates(state);
+
+            if (newStates.isEmpty()) {
+                continue;
+            }
+
+            for (State newState : newStates) {
+                if (newState.isWinner()) {
+                    return newState;
                 }
             }
 
-            paths.addAll(newPaths);
+            states.addAll(newStates);
 
-            if (length < path.size()) {
-                length = path.size();
-                System.out.println("Searching paths of length: " + length);
-                System.out.println("Paths on queue: " + paths.size());
+            if (depth < state.depth) {
+                depth = state.depth;
+                System.out.println("Searching paths of length: " + depth);
+                System.out.println("Paths on queue: " + states.size());
+                System.out.println("States so far: " + allStates.size());
             }
         }
 
         return null;
     }
 
-    private static List<List<State>> generateStates(List<State> states) {
-        List<List<State>> paths = new ArrayList<>();
+    private static Set<State> allStates = new HashSet<>();
 
-        State current = states.get(states.size() - 1);
+    private static List<State> generateStates(State current) {
+        List<State> newStates = new ArrayList<>();
 
         for (int dy = 1; dy >= -1; dy -= 2) {
             int nextFloor = current.floor + dy;
@@ -94,101 +106,95 @@ public class Day11RTG {
 
             for (int i = -1; i < nTypes * 2 - 1; i++) {
                 for (int j = i + 1; j < nTypes * 2; j++) {
-                    if (i >= 0 && !current.items[current.floor][i]) {
+                    int ibm = i >= 0 ? 1 << i : 0;
+                    if (ibm != 0 && (current.items[current.floor] & ibm) == 0) {
                         continue;
                     }
-                    if (!current.items[current.floor][j]) {
+
+                    int jbm = 1 << j;
+                    if ((current.items[current.floor] & jbm) == 0) {
                         continue;
                     }
+
+                    int bring = ibm | jbm;
 
                     State next = new State(current);
                     next.floor = nextFloor;
 
-                    if (i >= 0) {
-                        next.items[current.floor][i] = false;
-                        next.items[next.floor][i] = true;
-                    }
-                    next.items[current.floor][j] = false;
-                    next.items[next.floor][j] = true;
+                    next.items[current.floor] = next.items[current.floor] & ~bring;
+                    next.items[next.floor] = next.items[next.floor] | bring;
 
                     if (next.wouldFry())
                         continue;
 
-                    if (states.contains(next))
+                    if (allStates.contains(next))
                         continue;
 
-                    List<State> path = new ArrayList<>(states);
-                    path.add(next);
+                    allStates.add(next);
 
-                    paths.add(path);
+                    newStates.add(next);
                 }
             }
         }
 
-        return paths;
+        return newStates;
     }
 
     static class State {
-        boolean[][] items = new boolean[4][];
+        static final int CHIPMASK = (1 << nTypes) - 1;
+        int[] items = new int[4];
         int floor;
+        int depth;
 
-        State(State other) {
-            for (int i = 0; i < 4; i++) {
-                items[i] = new boolean[nTypes * 2];
-                System.arraycopy(other.items[i], 0, items[i], 0, nTypes * 2);
-            }
-            floor = other.floor;
+        State(State parent) {
+            System.arraycopy(parent.items, 0, items, 0, 4);
+            floor = parent.floor;
+            this.depth = parent.depth + 1;
         }
 
         State(Set<String> names, List<HashSet<String>> floorChips, List<HashSet<String>> floorGens) {
             String[] nameArr = names.toArray(new String[names.size()]);
             for (int i = 0; i < 4; i++) {
-                items[i] = new boolean[nTypes * 2];
                 for (int j = 0; j < nTypes; j++) {
-                    items[i][j] = floorChips.get(i).contains(nameArr[j]);
-                    items[i][j + nTypes] = floorGens.get(i).contains(nameArr[j]);
+                    if (floorChips.get(i).contains(nameArr[j])) {
+                        items[i] = items[i] | (1 << j);
+                    }
+                    if (floorGens.get(i).contains(nameArr[j])) {
+                        items[i] = items[i] | (1 << (j + nTypes));
+                    }
                 }
             }
+            depth = 0;
         }
 
         boolean isWinner() {
             if (floor != 3)
                 return false;
 
-            for (int i = 0; i < 3; i++) {
-                for (int j = 0; j < nTypes * 2; j++) {
-                    if (items[i][j]) {
-                        return false;
-                    }
-                }
+            if (items[0] != 0 || items[1] != 0 || items[2] != 0) {
+                return false;
             }
 
-            for (int j = 0; j < nTypes * 2; j++) {
-                if (!items[3][j]) {
-                    return false;
-                }
+            if (items[3] == 0) {
+                return false;
             }
 
             return true;
         }
 
         boolean wouldFry() {
-            boolean noGenerators = true;
-            for (int i = 0; i < nTypes; i++) {
-                if (items[floor][i + nTypes]) {
-                    noGenerators = false;
-                    break;
-                }
-            }
-            if (noGenerators)
+            if (items[floor] == 0) {
                 return false;
-
-            for (int i = 0; i < nTypes; i++) {
-                if (items[floor][i] && !items[floor][i + nTypes])
-                    return true;
             }
 
-            return false;   // no chips
+            int chips = items[floor] & CHIPMASK;
+            int gens = items[floor] >> nTypes;
+            if (chips == 0 || gens == 0) {
+                return false;
+            }
+
+            int shielded = chips & gens;
+            return (chips & ~shielded) != 0;
         }
 
         @Override
@@ -198,14 +204,7 @@ public class Day11RTG {
             if (!(obj instanceof State))
                 return false;
             final State other = (State) obj;
-            if (this.floor != other.floor) {
-                return false;
-            }
-            for (int i = 0; i < 4; i++) {
-                if (!Arrays.equals(this.items[i], other.items[i]))
-                    return false;
-            }
-            return true;
+            return this.floor == other.floor && Arrays.equals(this.items, other.items);
         }
     }
 }
